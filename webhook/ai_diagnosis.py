@@ -77,7 +77,7 @@ Respond ONLY in this JSON format, no extra text:
                 "Content-Type": "application/json",
             },
             json={
-                "model": "gpt-4o-mini",
+                "model": "deepseek-v4-flash",
                 "messages": [{"role": "user", "content": prompt}],
                 "max_tokens": 500,
             },
