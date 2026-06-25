@@ -2,7 +2,6 @@ import hashlib
 import hmac
 import json
 import os
-import traceback
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -64,7 +63,6 @@ async def github_webhook(request: Request):
                 print(json.dumps(diagnosis, indent=2))
             except Exception as exc:
                 print(f"Webhook processing error: {exc}")
-                traceback.print_exc()
                 return {"status": "received", "error": str(exc)}
 
     return {"status": "received"}
