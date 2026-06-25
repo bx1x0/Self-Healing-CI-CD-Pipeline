@@ -9,12 +9,17 @@ from fastapi import FastAPI, HTTPException, Request
 
 try:
     from webhook.ai_diagnosis import diagnose_failure
-    from webhook.healer import create_fix_pr, retry_pipeline, send_slack_alert
+    from webhook.healer import (
+        create_fix_pr,
+        retry_pipeline,
+        send_slack_alert,
+        send_success_alert,
+    )
     from webhook.log_extractor import extract_failure_info
     from webhook.log_fetcher import fetch_run_logs
 except ModuleNotFoundError:
     from ai_diagnosis import diagnose_failure
-    from healer import create_fix_pr, retry_pipeline, send_slack_alert
+    from healer import create_fix_pr, retry_pipeline, send_slack_alert, send_success_alert
     from log_extractor import extract_failure_info
     from log_fetcher import fetch_run_logs
 
@@ -46,8 +51,13 @@ async def github_webhook(request: Request):
     # Only process completed workflow runs that failed.
     if event == "workflow_run" and payload.get("action") == "completed":
         run = payload["workflow_run"]
+        info = extract_failure_info(run)
+
+        if run["conclusion"] == "success":
+            print(f"Success detected: {info['workflow_name']} on {info['branch']}")
+            send_success_alert(info)
+
         if run["conclusion"] == "failure":
-            info = extract_failure_info(run)
             print(f"Failure detected: {info['workflow_name']} on {info['branch']}")
 
             try:

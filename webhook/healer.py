@@ -68,6 +68,36 @@ AI Diagnosis:
         print(f"Slack alert failed: {response.status_code} {response.text}")
 
 
+def send_success_alert(info: dict) -> None:
+    """Send a Slack notification when the pipeline succeeds."""
+    if not SLACK_WEBHOOK_URL or SLACK_WEBHOOK_URL == "your_slack_webhook_url":
+        print("No Slack webhook configured, skipping success alert.")
+        return
+
+    message = {
+        "text": f"""
+Pipeline Succeeded!
+Workflow: {info['workflow_name']}
+Branch: {info['branch']}
+Commit: {info['commit']}
+Run URL: {info['run_url']}
+
+All checks passed successfully.
+"""
+    }
+
+    try:
+        response = requests.post(SLACK_WEBHOOK_URL, json=message, timeout=30)
+    except requests.RequestException as exc:
+        print(f"Slack success alert request failed: {exc}")
+        return
+
+    if response.status_code == 200:
+        print("Slack success alert sent.")
+    else:
+        print(f"Slack success alert failed: {response.status_code} {response.text}")
+
+
 def create_fix_pr(repo: str, info: dict, diagnosis: dict) -> None:
     """Create a PR branch and open a PR describing the suggested fix."""
     if not diagnosis.get("auto_fixable"):
