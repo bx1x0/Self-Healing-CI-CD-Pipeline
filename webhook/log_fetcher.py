@@ -9,6 +9,35 @@ load_dotenv(Path(__file__).with_name(".env"))
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
 
+def build_job_summary(job: dict, error: Exception | None = None) -> str:
+    lines = [
+        f"Job: {job.get('name')}",
+        f"Conclusion: {job.get('conclusion')}",
+    ]
+
+    if error:
+        lines.append(f"Raw log download failed: {error}")
+
+    failed_steps = [
+        step for step in job.get("steps", [])
+        if step.get("conclusion") == "failure"
+    ]
+
+    if failed_steps:
+        lines.append("Failed steps:")
+        for step in failed_steps:
+            lines.append(
+                "- "
+                f"{step.get('name')} "
+                f"(status={step.get('status')}, conclusion={step.get('conclusion')}, "
+                f"started={step.get('started_at')}, completed={step.get('completed_at')})"
+            )
+    else:
+        lines.append("No failed step details were available from the Jobs API.")
+
+    return "\n".join(lines)
+
+
 def fetch_run_logs(repo: str, run_id: int) -> str:
     if not GITHUB_TOKEN or GITHUB_TOKEN == "your_github_token":
         raise ValueError("GITHUB_TOKEN is missing in webhook/.env")
@@ -29,14 +58,18 @@ def fetch_run_logs(repo: str, run_id: int) -> str:
         if job["conclusion"] == "failure":
             job_id = job["id"]
             log_url = f"https://api.github.com/repos/{repo}/actions/jobs/{job_id}/logs"
-            log_response = requests.get(
-                log_url,
-                headers=headers,
-                allow_redirects=True,
-                timeout=30,
-            )
-            log_response.raise_for_status()
-            lines = log_response.text.splitlines()
-            failed_logs.append(f"Job: {job['name']}\n" + "\n".join(lines[-100:]))
+            try:
+                log_response = requests.get(
+                    log_url,
+                    headers=headers,
+                    allow_redirects=True,
+                    timeout=30,
+                )
+                log_response.raise_for_status()
+                lines = log_response.text.splitlines()
+                failed_logs.append(f"Job: {job['name']}\n" + "\n".join(lines[-100:]))
+            except requests.RequestException as exc:
+                print(f"Could not download raw logs for job {job['name']}: {exc}")
+                failed_logs.append(build_job_summary(job, exc))
 
     return "\n\n".join(failed_logs)
