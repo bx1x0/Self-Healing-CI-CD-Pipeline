@@ -9,10 +9,12 @@ from fastapi import FastAPI, HTTPException, Request
 
 try:
     from webhook.ai_diagnosis import diagnose_failure
+    from webhook.healer import create_fix_pr, retry_pipeline, send_slack_alert
     from webhook.log_extractor import extract_failure_info
     from webhook.log_fetcher import fetch_run_logs
 except ModuleNotFoundError:
     from ai_diagnosis import diagnose_failure
+    from healer import create_fix_pr, retry_pipeline, send_slack_alert
     from log_extractor import extract_failure_info
     from log_fetcher import fetch_run_logs
 
@@ -61,6 +63,15 @@ async def github_webhook(request: Request):
 
                 print("AI diagnosis:")
                 print(json.dumps(diagnosis, indent=2))
+
+                # 1. Retry the failed workflow jobs.
+                retry_pipeline(info["repo"], info["run_id"])
+
+                # 2. Send a Slack alert if a Slack webhook is configured.
+                send_slack_alert(info, diagnosis)
+
+                # 3. Create a fix PR if the diagnosis says it is auto-fixable.
+                create_fix_pr(info["repo"], info, diagnosis)
             except Exception as exc:
                 print(f"Webhook processing error: {exc}")
                 return {"status": "received", "error": str(exc)}
