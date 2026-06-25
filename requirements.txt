@@ -1,2 +1,6 @@
 pytest
 flake8
+fastapi
+uvicorn
+requests
+python-dotenv
