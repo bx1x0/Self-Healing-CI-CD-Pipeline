@@ -10,13 +10,18 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
 
 def fetch_run_logs(repo: str, run_id: int) -> str:
+    if not GITHUB_TOKEN or GITHUB_TOKEN == "your_github_token":
+        raise ValueError("GITHUB_TOKEN is missing in webhook/.env")
+
     headers = {
         "Authorization": f"Bearer {GITHUB_TOKEN}",
         "Accept": "application/vnd.github+json",
     }
 
     jobs_url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/jobs"
-    jobs = requests.get(jobs_url, headers=headers, timeout=30).json()
+    jobs_response = requests.get(jobs_url, headers=headers, timeout=30)
+    jobs_response.raise_for_status()
+    jobs = jobs_response.json()
 
     failed_logs = []
 
@@ -30,6 +35,7 @@ def fetch_run_logs(repo: str, run_id: int) -> str:
                 allow_redirects=True,
                 timeout=30,
             )
+            log_response.raise_for_status()
             lines = log_response.text.splitlines()
             failed_logs.append(f"Job: {job['name']}\n" + "\n".join(lines[-100:]))
 

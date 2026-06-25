@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import os
+import traceback
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -48,13 +49,22 @@ async def github_webhook(request: Request):
             info = extract_failure_info(run)
             print(f"Failure detected: {info['workflow_name']} on {info['branch']}")
 
-            # Fetch real logs from GitHub.
-            logs = fetch_run_logs(info["repo"], info["run_id"])
+            try:
+                # Fetch real logs from GitHub.
+                logs = fetch_run_logs(info["repo"], info["run_id"])
 
-            # Send logs to OpenModel AI for diagnosis.
-            diagnosis = diagnose_failure(logs, info)
+                if not logs.strip():
+                    print("No failed job logs were found for this workflow run.")
+                    return {"status": "received", "message": "no failed logs found"}
 
-            print("AI diagnosis:")
-            print(json.dumps(diagnosis, indent=2))
+                # Send logs to OpenModel AI for diagnosis.
+                diagnosis = diagnose_failure(logs, info)
+
+                print("AI diagnosis:")
+                print(json.dumps(diagnosis, indent=2))
+            except Exception as exc:
+                print(f"Webhook processing error: {exc}")
+                traceback.print_exc()
+                return {"status": "received", "error": str(exc)}
 
     return {"status": "received"}

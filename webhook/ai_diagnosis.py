@@ -11,6 +11,9 @@ OPENMODEL_API_KEY = os.getenv("OPENMODEL_API_KEY")
 
 
 def diagnose_failure(logs: str, run_info: dict) -> dict:
+    if not OPENMODEL_API_KEY or OPENMODEL_API_KEY == "your_openmodel_key":
+        raise ValueError("OPENMODEL_API_KEY is missing in webhook/.env")
+
     prompt = f"""
 You are a DevOps expert. A CI/CD pipeline has failed.
 
@@ -43,7 +46,12 @@ Respond ONLY in this JSON format, no extra text:
         },
         timeout=60,
     )
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        raise RuntimeError(
+            f"OpenModel API request failed: {response.status_code} {response.text}"
+        ) from exc
 
     raw = response.json()["choices"][0]["message"]["content"]
     clean = raw.strip().replace("```json", "").replace("```", "")
