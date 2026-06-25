@@ -9,14 +9,17 @@ load_dotenv(Path(__file__).with_name(".env"))
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
 
-def build_job_summary(job: dict, error: Exception | None = None) -> str:
+def build_job_summary(job: dict, raw_logs_available: bool = True) -> str:
     lines = [
         f"Job: {job.get('name')}",
         f"Conclusion: {job.get('conclusion')}",
     ]
 
-    if error:
-        lines.append(f"Raw log download failed: {error}")
+    if not raw_logs_available:
+        lines.append(
+            "Raw logs were not available to the webhook listener, "
+            "so use the failed job/step summary below."
+        )
 
     failed_steps = [
         step for step in job.get("steps", [])
@@ -70,6 +73,6 @@ def fetch_run_logs(repo: str, run_id: int) -> str:
                 failed_logs.append(f"Job: {job['name']}\n" + "\n".join(lines[-100:]))
             except requests.RequestException as exc:
                 print(f"Could not download raw logs for job {job['name']}: {exc}")
-                failed_logs.append(build_job_summary(job, exc))
+                failed_logs.append(build_job_summary(job, raw_logs_available=False))
 
     return "\n\n".join(failed_logs)

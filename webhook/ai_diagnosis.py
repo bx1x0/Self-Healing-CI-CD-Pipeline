@@ -60,6 +60,11 @@ Commit: {run_info['commit']}
 Logs:
 {logs}
 
+Important:
+- Diagnose the CI/CD pipeline failure, not webhook listener/network problems.
+- If raw logs were unavailable to the webhook listener, do not classify that as the pipeline root cause.
+- If only a failed pytest/test step summary is available, classify it as flaky_test and suggest checking/fixing the failing test assertion.
+
 Respond ONLY in this JSON format, no extra text:
 {{
   "failure_type": "flaky_test | dependency_error | syntax_error | env_missing | other",
