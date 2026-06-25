@@ -71,7 +71,7 @@ Respond ONLY in this JSON format, no extra text:
 
     try:
         response = requests.post(
-            "https://console.openmodel.ai/api/v1/chat/completions",
+            "https://api.openmodel.ai/v1/messages",
             headers={
                 "Authorization": f"Bearer {OPENMODEL_API_KEY}",
                 "Content-Type": "application/json",
@@ -96,7 +96,13 @@ Respond ONLY in this JSON format, no extra text:
         )
         return fallback_diagnosis(logs)
 
-    raw = response.json()["choices"][0]["message"]["content"]
+    data = response.json()
+    raw = ""
+    for block in data.get("content", []):
+        if block.get("type") == "text":
+            raw = block.get("text", "")
+            break
+
     clean = raw.strip().replace("```json", "").replace("```", "")
     try:
         return json.loads(clean)
